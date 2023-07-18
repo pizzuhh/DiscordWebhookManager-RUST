@@ -11,3 +11,4 @@ Yes, I'm using other libraries and regex URL checking
 I'll probably as well make GUI version in the future but for now it's only CLI!
 
 ## STILL IN DEVELOPMENT
+version 0.1 is out!
