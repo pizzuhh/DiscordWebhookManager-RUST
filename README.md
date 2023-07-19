@@ -10,4 +10,4 @@ Yes, I'm using other libraries and regex URL checking
 # GUI version?
 I'll probably as well make GUI version in the future but for now it's only CLI!
 
-## STILL IN DEVELOPMENT
+### Only for linux for now
