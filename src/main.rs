@@ -3,29 +3,64 @@
 use std::io::{stdin, stdout, Write};
 use std::process::exit;
 use regex::Regex;
-use reqwest::{Client, Request, Response};
+use reqwest::{Client, Request, Response, Url};
 use tokio::*;
 use serde::{Serialize, Deserialize};
 use serde_json::Value;
 use std::fs;
 use std::fs::File;
+use std::io::{BufReader, Read};
+use async_recursion::async_recursion;
+use serde::de::Unexpected::Str;
+use colored::*;
 
 
 fn main()
 {
     //define string to store the URL
-    let mut url:String = String::new();
-    //Get user input
-    print!("Enter Webhook URL> ");
-    stdout().flush().expect("Failed to flush\n");
-    match stdin().read_line(&mut url)
+
+
+    match File::open("./load.json")
     {
-        Ok(_) =>
+        Ok(file) =>
             {
-                let url:&str = url.trim();
-                chk_url(url);
-            }, Err(_) => println!("fail")
+                println!("{}", "Loading URL from \"load.json\"".green().bold());
+                let mut buf_reader = BufReader::new(file);
+                let mut contents:String = String::new();
+                buf_reader.read_to_string(&mut contents).expect("can't read \"load.json\"");
+                let token:serde_json::Value = serde_json::from_str(&contents).expect("couldn't parse json str");
+                //println!("{:?}", token);
+
+                if let Some(t) = token.get("token")
+                {
+                    if let Some(tok) = t.as_str()
+                    {
+                        chk_url(tok);
+                    }
+                }
+
+            },
+        Err(_) =>
+            {
+                println!("{}", "File \"load\" doesn't exist or can't be opened..!".red());
+                let mut url:String = String::new();
+                //Get user input
+                print!("Enter Webhook URL> ");
+                stdout().flush().expect("Failed to flush\n");
+                match stdin().read_line(&mut url)
+                {
+                    Ok(_) =>
+                        {
+                            let url:&str = url.trim();
+                            chk_url(url);
+                        }, Err(_) => println!("fail")
+                }
+            }
     }
+
+
+
+
 }
 
 async fn print_info(json_d:Value)
@@ -120,7 +155,7 @@ async fn getinfo_n_jumptomm(url:&str)
         let txt:String = response.text().await.expect("error");
         let json_d: serde_json::Value = serde_json::from_str(&txt).expect("error");
         print_info(json_d).await;
-        MainMenu(url).await;
+        main_menu(url).await;
     }
     else
     {
@@ -138,15 +173,15 @@ fn chk_url(url:&str)
     {
         true =>
             {
-                println!("Link is valid! Proceeding to MainMenu()!");
+                println!("Link is valid! Proceeding to main_menu()!");
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 rt.block_on(getinfo_n_jumptomm(url));
             }
         false => println!("Invalid link!!")
     }
 }
-
-async fn MainMenu(url:&str)
+#[async_recursion]
+async fn main_menu(url:&str)
 {
     println!("1. Send Message\t\t\t2. Send message by loading json file\n3. Delete webhook\t\t4. Exit");
     let mut c:String = String::new();
@@ -180,7 +215,7 @@ async fn MainMenu(url:&str)
 
         3=>
             {
-                delete_webhook(url).await;
+                delete_webhook(url);
             },   //delete
         4=>exit(0),
         _=>println!("invalid option"),
@@ -197,7 +232,8 @@ async fn delete_webhook(url:&str)
             {
                 if response.status().is_success()
                 {
-                    println!("Webhook deleted!");
+                    println!("{}", "Webhook deleted!".green().bold());
+                    exit(0);
                 }
                 else { println!("bad11") }
             }, Err(_) => println!("bad")
@@ -220,7 +256,8 @@ async fn send_message(url:&str, json_d:String)
     {
         Ok(response) =>
             {
-                println!("Message sent!");
+                println!("{}", "Message sent!".green().bold());
+                main_menu(url).await;
             }, Err(_) => println!("bad")
     }
 }
@@ -244,7 +281,8 @@ async fn load_json(url:&str, path:&str)
     {
         Ok(response) =>
             {
-                println!("Message sent!");
+                println!("{}", "Message sent!".green().bold());
+                main_menu(url).await;
             }, Err(_) => println!("bad")
     }
 }
