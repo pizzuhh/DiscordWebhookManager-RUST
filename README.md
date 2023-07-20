@@ -8,6 +8,4 @@ Well, i decided to lean Runst and that's one of the projects i thought of.
 Yes, I'm using other libraries and regex URL checking
 
 # GUI version?
-I'll probably as well make GUI version in the future but for now it's only CLI!
-
-### Only for linux for now
+I'll probably as well make GUI version in the future but for now it's only CLI
