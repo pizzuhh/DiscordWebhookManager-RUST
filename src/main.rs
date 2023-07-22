@@ -215,7 +215,7 @@ async fn main_menu(url:&str)
 
         3=>
             {
-                delete_webhook(url);
+                delete_webhook(url).await;
             },   //delete
         4=>exit(0),
         _=>println!("invalid option"),
