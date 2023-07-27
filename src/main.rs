@@ -10,9 +10,11 @@ use serde_json::Value;
 use std::fs;
 use std::fs::File;
 use std::io::{BufReader, Read};
+use std::time::Duration;
 use async_recursion::async_recursion;
 use serde::de::Unexpected::Str;
 use colored::*;
+use tokio::time::Sleep;
 
 
 fn main()
@@ -183,7 +185,7 @@ fn chk_url(url:&str)
 #[async_recursion]
 async fn main_menu(url:&str)
 {
-    println!("1. Send Message\t\t\t2. Send message by loading json file\n3. Delete webhook\t\t4. Exit");
+    println!("1. Send Message (2. options)\n2. Delete webhook\n3. Exit");
     let mut c:String = String::new();
     print!("> ");
     stdout().flush().expect("Failed to flush\n");
@@ -195,30 +197,29 @@ async fn main_menu(url:&str)
     {
         1=>
             {
-                let mut input:String = String::new();
-                print!("message> ");
-                stdout().flush().expect("err");
-                stdin().read_line(&mut input).expect("error");
-                let input = input.trim();
-                let json_d:String = format!("{{\"content\":\"{}\"}}", input);
-                send_message(url, json_d).await;
-            },   //sendmsg
+                send_msg_menu(url).await;
+            },
         2=>
             {
-                let mut p:String = String::new();
-                print!("Enter path> ");
-                stdout().flush().expect("error");
-                stdin().read_line(&mut p).expect("error");
-                let mut p = p.trim();
-                load_json(url, p).await;
-            },   //json load
+                print!("Are you sure you want to delete this webhook?[y/n] " );
+                let mut c:String = String::new();
+                stdout().flush().expect("Failed to flush\n");
+                stdin().read_line(&mut c).expect("error");
+
+                let ask = c.trim();
+                match ask
+                {
+                    "y" => delete_webhook(url).await,
+                    "n" => main_menu(url).await,
+                    _ => {println!("Invalid opion. Not deleting webhook!"); main_menu(url).await;}
+                };
+            },
 
         3=>
             {
-                delete_webhook(url).await;
-            },   //delete
-        4=>exit(0),
-        _=>println!("invalid option"),
+                exit(0) ;
+            },
+        _=>println!("invalid option")
     }
 }
 
@@ -235,13 +236,81 @@ async fn delete_webhook(url:&str)
                     println!("{}", "Webhook deleted!".green().bold());
                     exit(0);
                 }
-                else { println!("bad11") }
+                else { println!("couldn't delete webhook for some reason") }
             }, Err(_) => println!("bad")
     }
 
 }
 
-async fn send_message(url:&str, json_d:String)
+async fn send_msg_menu(url: &str)
+{
+    println!("1. Send message\t\t2. Load JSON file");
+
+    let mut c:String = String::new();
+    print!("> ");
+    stdout().flush().expect("Failed to flush\n");
+
+    stdin().read_line(&mut c).expect("error");
+    let p:u8 = c.trim().parse::<u8>().expect("err");
+
+    match p
+    {
+        1 =>
+            {
+                let mut msg: String = String::new();
+                print!("msg > ");
+                stdout().flush().expect("failed to flush\n");
+                stdin().read_line(&mut msg).expect("err");
+
+                let msg = msg.trim();
+
+                let mut count: String = String::new();
+                print!("count(1) > ");
+                stdout().flush().expect("failed to flush\n");
+                stdin().read_line(&mut count).expect("err");
+
+                let count:u64 = count.trim().parse::<u64>().unwrap_or(1);
+
+                let json_str = format!("{{\"content\":\"{}\"}}", msg);
+
+                for _ in 1..=count
+                {
+                    send_message(url, json_str.clone()).await;
+                    time::sleep(Duration::from_millis(500));
+                }
+                main_menu(url).await;
+
+            },
+
+        2=>
+            {
+                let mut path:String = String::new();
+                print!("Enter path> ");
+                stdout().flush().expect("error");
+                stdin().read_line(&mut path).expect("error");
+                let path = path.trim();
+
+                let mut count: String = String::new();
+                print!("count(1) > ");
+                stdout().flush().expect("failed to flush\n");
+                stdin().read_line(&mut count).expect("err");
+
+                let count:u64 = count.trim().parse::<u64>().unwrap_or(1);
+
+                for _ in 1..=count
+                {
+                    load_json(url, path).await;
+                    time::sleep(Duration::from_millis(500));
+                }
+                main_menu(url).await;
+            }
+
+        _ => {println!("Invalid option! Returning to main menu"); main_menu(url).await;}
+    }
+
+}
+
+async fn send_message(url:&str, json_d: String)
 {
     let client = Client::new();
     let response = client
@@ -257,7 +326,6 @@ async fn send_message(url:&str, json_d:String)
         Ok(response) =>
             {
                 println!("{}", "Message sent!".green().bold());
-                main_menu(url).await;
             }, Err(_) => println!("bad")
     }
 }
@@ -282,7 +350,6 @@ async fn load_json(url:&str, path:&str)
         Ok(response) =>
             {
                 println!("{}", "Message sent!".green().bold());
-                main_menu(url).await;
             }, Err(_) => println!("bad")
     }
 }
